@@ -57,7 +57,7 @@ def get_search_page(item,page_no):
     page = request_url(search_url)
     return page
 
-page=get_search_page('my+little+pony',2)
+# page=get_search_page('my+little+pony',2)
 
 def get_result_links_from_search_page(page):
     url_list = []
@@ -67,8 +67,8 @@ def get_result_links_from_search_page(page):
         url_list.append('https://www.amazon.co.uk'+item.find(class_="a-link-normal")['href'])
     return url_list
 
-soup = BeautifulSoup(page, 'html.parser')
-soup.find_all(class_="s-expand-height s-include-content-margin s-latency-cf-section s-border-bottom")
+# soup = BeautifulSoup(page, 'html.parser')
+# soup.find_all(class_="s-expand-height s-include-content-margin s-latency-cf-section s-border-bottom")
 
 def build_review_url(url,page_no):
     review_url = url.replace('dp','product-reviews')+'/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews&pageNumber=%s'%(page_no)
@@ -106,7 +106,7 @@ def get_links_from_brand_list(brand_list, out_path, max_results_pages):
 
             search_result_links = get_result_links_from_search_page(search_page)
             for link in search_result_links:
-                out_df.loc[i] = [brand,page_no,brand]
+                out_df.loc[i] = [brand,page_no,link]
                 i=i+1
     
 
