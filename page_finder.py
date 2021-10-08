@@ -6,17 +6,18 @@ Created on Fri Oct  8 11:26:16 2021
 """
 import requests
 from bs4 import BeautifulSoup
+import pandas as pd
 
 """
 Takes a search term - search term code
 Builds a search url - build_amz_search_url function
-Extracts the results of the search
-Finds all the product links. Stores their urls and generic data
-Cycle through a set number of pages of search results
-Save it all to a xlsx file
+Extracts the results of the search - regular code
+Finds all the product links. Stores their urls and generic data - extract_product function
+Cycle through a set number of pages of search results - TODO
+Save it all to a xlsx file - regular code
 """
 
-brand_string = "my little pony"
+brand_string = "lego"
 
 headers = ({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0',
             'Accept-Language': 'en-US, en;q=0.5'})
@@ -44,8 +45,8 @@ def extract_product(item):
     # Price
     # An item has no price if it's currently unavailable
     try: 
-        price_parent = item.find('span', 'a-price')
-        price = float(price_parent.find('span' 'a-offscreen').text.replace('£', ''))
+        price_parent = item.find('span', {'class': 'a-price'})
+        price = float(price_parent.find('span', {'class': 'a-offscreen'}).text.replace('£', ''))
     except AttributeError:
         price = "NA"
     
@@ -53,28 +54,39 @@ def extract_product(item):
     # Some items have no ratings or reviews, if so we want to mark the reviews as 0 and rating as NA
     try:
         rating = item.i.text.replace('out of 5 stars', '').strip()
-        print(rating)
-        review_count = int(item.find('span', {'class': 'a-size-base', 'dir': 'auto'}).text)
+        review_count = int(item.find('span', {'class': 'a-size-base'}).text.replace(',', ''))
     except AttributeError:
         rating = "NA"
         review_count = 0
+    except ValueError:
+        review_count = "Error"
     
     result = (description, url, price, rating, review_count)
 
     return result
 
-
+# This generates a url using our function
 url = build_amz_search_url(brand_string, 1)
 
+# This calls the actual page (currently using a custom url)
 r = requests.get(url = 'https://www.amazon.co.uk/s?k=lego&qid=1633700647&ref=sr_pg_1', headers = headers, timeout = 1)
 
+# Create a soup object from the webpage
 soup = BeautifulSoup(r.text, 'lxml')
 
-records = []
+# Create an empty list for the products
+products = []
+
+# Find all the product objects in the soup object
 results = soup.find_all('div', {'data-component-type': 's-search-result'})
 
+# Run our details extraction function on each product and add it to our list
 for item in results:
-    record = extract_product(item)
-    records.append(record)
-    
-print(records[0])
+    product = extract_product(item)
+    products.append(product)
+
+print(products[0])
+
+# Convert our list to a pandas df and save it to an excel file
+df = pd.DataFrame(products)
+df.to_excel('product_urls.xlsx', index=False)
