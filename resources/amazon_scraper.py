@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import urllib.request
-import bs4
 from bs4 import BeautifulSoup
 import pandas as pd
-from openpyxl import load_workbook
-import datetime
 from urllib.error import  URLError, HTTPError
 import time
 
@@ -115,7 +112,7 @@ def get_links_from_brand_list(brand_list, out_path, max_results_pages):
 
 #define list of search terms to iterate over
 #I've put these in a csv so you can edit easily
-brand_list_path = 'resources/search_terms.csv'
+brand_list_path = 'search_terms.csv'
 
 #define out filepath (to save results to)
 out_path = 'out/test.csv'

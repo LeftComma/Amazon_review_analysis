@@ -10,7 +10,7 @@ import time
 import pandas as pd
 import re
 
-# TODO: Reorganise it so it writes each product to the output file as it goes?
+# TODO: Reorganise it so it writes each product to the output file as it goes
 
 review_list = []
 
@@ -44,7 +44,7 @@ def get_reviews(soup):
             
             # Extract each object by identifying it's tags
             title = item.find('a', {'data-hook': 'review-title'}).text.strip()
-            rating = float(item.find('i', {'data-hook': 'review-star-rating'}).text.replace('out of 5 stars', '').strip())
+            rating = float(item.find('i', {'data-hook': 'review-star-rating'}).text.replace(' out of 5 stars', '').strip())
             body = item.find('span', {'data-hook': 'review-body'}).text.strip()
             
             # Date requires slightly more processing, it returns a longer string of text
