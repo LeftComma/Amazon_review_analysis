@@ -4,27 +4,17 @@ Created on Fri Oct  8 11:26:16 2021
 
 @author: gabri
 """
+import time
+
+import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-import pandas as pd
-
-"""
-Takes a search term - search term code
-Builds a search url - build_amz_search_url function
-Extracts the results of the search - regular code
-Finds all the product links. Stores their urls and generic data - extract_product function
-Cycle through a set number of pages of search results - TODO
-Save it all to a xlsx file - regular code
-"""
-
-brand_string = "lego"
-
-headers = ({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0',
-            'Accept-Language': 'en-US, en;q=0.5'})
-
 
 # TODO: Once this fully works, try messing around with how short I can get the search term
-# Create an amazon link from the search term
+# One of the examples uses 'https://www.amazon.com/s?k={search_term}&ref=nb_sb_noss_1'
+
+
+# Create the url out of the brand string and page
 def build_amz_search_url(brand_string, page_no):
 
     # Replace the spaces in the search term with plus symbols
@@ -33,13 +23,11 @@ def build_amz_search_url(brand_string, page_no):
     # And format them into an amazon url
     url = (
         f'https://www.amazon.co.uk/s?k={search_term}&i=toys&rh=p_89%3A{search_term}&dc&page={page_no}&crid=1SDTYPYXM70YV&qid=1561713015&rnid=1632651031&sprefix=my+li%2Ctoys%2C163&ref=sr_pg_{page_no}')
+
     return url
 
-# Extract and return the information from a product
 
-
-def extract_product(item):
-
+def extract_product(item, page):  # Extract the details from a single product
     # Description and url
     atag = item.h2.a
     description = atag.text.strip()
@@ -55,58 +43,78 @@ def extract_product(item):
         price = "NA"
 
     # Rating and number of reviews
-    # Some items have no ratings or reviews, if so we want to mark the reviews as 0 and rating as NA
+    # Some items have no rating, if so we want to mark the rating as NA
     try:
         rating = item.i.text.replace('out of 5 stars', '').strip()
-        review_count = int(
-            item.find('span', {'class': 'a-size-base'}).text.replace(',', ''))
     except AttributeError:
         rating = "NA"
         review_count = 0
-    except ValueError:
-        '''
-        # Value errors are thrown up because there are multiple things with the class a-size-base in the item
-        # Only one of these is the actual number of ratings.
-        # I could run this code and then extract the 2nd element, which is the number of ratings
-        # However, the original code seems to work almost every time. This code at the stage it's currently at
-        # creates more errors. Not totally sure why the original code works most of the time.
-        # I'm going to just leave it, as something that can be changed if the errors are too big of a problem
-        review_count = item.find_all(
-            'span', {'class': 'a-size-base'})
-        print(review_count)
-        print(type(review_count))'''
-        review_count = "Error"
 
-    result = (description, url, price, rating, review_count)
+    result = {'description': description, 'url': url, 'price': price,
+              'rating': rating, 'page': page}
 
     return result
 
 
-# This generates a url using our function
-url = build_amz_search_url(brand_string, 1)
+def scrape_searches(brand_string, max_pages, max_results):  # Run the main body of our code
+    # Create a bool to tell us whether we've reached our max number of products
+    max_hit = False
 
-# This calls the actual page (currently using a custom url)
-r = requests.get(
-    url=url, headers=headers, timeout=1)
-# Test url for product_urls_changed.xlsx is 'https://www.amazon.co.uk/s?k=lego&qid=1633700647&ref=sr_pg_1'
+    # Create an empty list for the products
+    products = []
 
-# Create a soup object from the webpage
-soup = BeautifulSoup(r.text, 'lxml')
+    # Define the custom headers that stop Amazon thinking we're a bot
+    headers = ({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0',
+                'Accept-Language': 'en-US, en;q=0.5'})
 
-# Create an empty list for the products
-products = []
+    for page in range(1, max_pages):
+        print(f'Scraping page {page}')
 
-# Find all the product objects in the soup object
-results = soup.find_all('div', {'data-component-type': 's-search-result'})
+        # This generates a url using our function
+        url = build_amz_search_url(brand_string, page)
+        # Test url for product_urls_changed.xlsx is 'https://www.amazon.co.uk/s?k=lego&qid=1633700647&ref=sr_pg_1'
 
-# Run our details extraction function on each product and add it to our list
-for item in results:
-    product = extract_product(item)
-    products.append(product)
+        # This calls the actual page (currently using a custom url)
+        time.sleep(2)
+        # TODO: Maybe move the requests stuff to it's own function so I can do error handling
+        r = requests.get(
+            url=url, headers=headers, timeout=2)
 
-print(url)
+        # Create a soup object from the webpage
+        soup = BeautifulSoup(r.text, 'lxml')
 
-# Convert our list to a pandas df and save it to an excel file
-df = pd.DataFrame(products)
-df.columns = ['name', 'url', 'price', 'rating', 'num_of_ratings']
-df.to_excel('product_urls.xlsx', index=False)
+        # Find all the product objects in the soup object
+        results = soup.find_all(
+            'div', {'data-component-type': 's-search-result'})
+
+        # Run our details extraction function on each product and add it to our list
+        for item in results:
+            product = extract_product(item, page)
+            products.append(product)
+
+            # Extract the number of products scraped so far
+            products_progress = len(products)
+
+            if products_progress % 10 == 0:  # Print the progress every 10 products
+                print(f'Scraped {products_progress} products')
+            if products_progress >= max_results:  # If we've reached the max number of products, exit the loop
+                max_hit = True
+                break
+
+        # Exit the loop if the max number of products has been reached
+        if max_hit:
+            break
+
+    # Convert our list to a pandas df and save it to an excel file
+    df = pd.DataFrame(products)
+    df.to_excel('product_urls.xlsx', index=False)
+    print('Data saved')
+
+
+# Set our three variables
+brand_string = "lego"
+max_pages = 6
+max_results = 65
+
+# Call our main function
+scrape_searches(brand_string, max_pages, max_results)
