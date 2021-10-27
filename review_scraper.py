@@ -10,14 +10,8 @@ import time
 import pandas as pd
 import re
 
-# TODO: Reorganise it so it writes each product to the output file as it goes
 
-review_list = []
-
-# Get a soup object from a url
-
-
-def get_soup(url):
+def get_soup(url):  # Get a soup object from a url
     time.sleep(1)
 
     # Having a header helps convince Amazon that we're not a bot
@@ -33,7 +27,7 @@ def get_soup(url):
     return soup
 
 
-def get_reviews(soup):
+def get_reviews(soup, page):
     # Find all the reviews, identified by their particular tag
     reviews = soup.find_all('div', {'data-hook': 'review'})
 
@@ -81,7 +75,7 @@ def get_reviews(soup):
             except AttributeError:
                 helpfulness = 0
 
-            review = {'product': product, 'title': title, 'rating': rating, 'helpfulness': helpfulness,
+            review = {'product': product, 'title': title, 'page': page, 'rating': rating, 'helpfulness': helpfulness,
                       'date': date, 'body': body}
 
             review_list.append(review)
@@ -91,23 +85,32 @@ def get_reviews(soup):
         pass
 
 
-# This runs through the x pages of reviews
-for x in range(1, 10):
-    soup = get_soup(
-        f'https://www.amazon.co.uk/product-reviews/B07WD58H6R/ref=cm_cr_arp_d_paging_btm_next_2?ie=UTF8&reviewerType=all_reviews&pageNumber={x}')
-    get_reviews(soup)
+def scrape_pages(input_url, output_url, max_pages):
+    # This runs through the x pages of reviews
+    for x in range(1, max_pages):
+        # Set the input url to the correct page number
+        input_url = f'{input_url}{x}'
 
-    # Print to give feedback on the progress
-    print(f'Getting page: {x}')
-    print(len(review_list))
+        soup = get_soup(input_url)
 
-    # This tag is found when the "next page" option is unavailable
-    # When that's the case we want to end our search
-    if not soup.find('li', {'class': 'a-disabled a-last'}):
-        pass
-    else:
-        break
+        get_reviews(soup, x)
 
-# Convert our list to a df and save it to an excel file
-df = pd.DataFrame(review_list)
-df.to_excel('product_reviews.xlsx', index=False)
+        # Print to give feedback on the progress
+        print(f'Getting page: {x}')
+        print(len(review_list))
+
+        # This tag is found when the "next page" option is unavailable
+        # When that's the case we want to end our search
+        if soup.find('li', {'class': 'a-disabled a-last'}):
+            break
+
+    # Convert our list to a df and save it to an excel file
+    df = pd.DataFrame(review_list)
+    df.to_excel(output_url, index=False)
+
+
+# Get urls from a url spreadsheet
+review_list = []
+
+scrape_pages('https://www.amazon.co.uk/product-reviews/B07WD58H6R/ref=cm_cr_arp_d_paging_btm_next_2?ie=UTF8&reviewerType=all_reviews&pageNumber=',
+             'product_reviews.xlsx', 10)
