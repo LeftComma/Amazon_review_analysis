@@ -109,8 +109,8 @@ def scrape_pages(input_url, output_url, max_pages):
     df.to_excel(output_url, index=False)
 
 
-# Get urls from a url spreadsheet
+# TODO: Get urls from a url spreadsheet, and run through each of them
 review_list = []
 
-scrape_pages('https://www.amazon.co.uk/product-reviews/B07WD58H6R/ref=cm_cr_arp_d_paging_btm_next_2?ie=UTF8&reviewerType=all_reviews&pageNumber=',
+scrape_pages('https://www.amazon.co.uk/LEGO-42123-Technic-Collectible-Construction/product-reviews/B08G4293BD/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews&pageNumber=',
              'product_reviews.xlsx', 10)
