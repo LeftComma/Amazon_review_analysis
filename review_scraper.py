@@ -30,11 +30,13 @@ def get_soup(url):  # Get a soup object from a url
 def get_reviews(soup, page):
     # Find all the reviews, identified by their particular tag
     reviews = soup.find_all('div', {'data-hook': 'review'})
+    print(f"{len(reviews)} reviews found on this page")
 
     # Throwing this in a try statement lets us skip reviews that break our code
     # The key example of these would be reviews in foreign languages
     try:
         for item in reviews:
+            print("Reviewing an item")
             # Take the product's title from the overall object
             product = soup.title.text.replace(
                 'Amazon.co.uk:Customer reviews:', '').strip()
@@ -82,6 +84,7 @@ def get_reviews(soup, page):
 
     # If we can't run our extraction code, just go to the next review
     except:
+        print("Skipping a review due to try/except failure")
         pass
 
 
@@ -89,9 +92,11 @@ def scrape_pages(input_url, output_url, max_pages):
     # This runs through the x pages of reviews
     for x in range(1, max_pages):
         # Set the input url to the correct page number
-        input_url = f'{input_url}{x}'
+        current_url = f'{input_url}{x}'
 
-        soup = get_soup(input_url)
+        print(f"The currently url is {input_url}")
+
+        soup = get_soup(current_url)
 
         get_reviews(soup, x)
 
