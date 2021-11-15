@@ -11,6 +11,17 @@ import pandas as pd
 import re
 
 
+def build_review_url(url):  # Turn a regular review into a product review
+    # Replace default page with product reviews
+    review_url = url.replace('dp', 'product-reviews')
+
+    # Strip everything off the review before a particular expression, and then add on a different ending
+    review_url = re.split('/ref=', review_url)[0] + \
+        '/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews&pageNumber='
+
+    return review_url
+
+
 def get_soup(url):  # Get a soup object from a url
     time.sleep(1)
 
@@ -32,11 +43,10 @@ def get_reviews(soup, page):
     reviews = soup.find_all('div', {'data-hook': 'review'})
     print(f"{len(reviews)} reviews found on this page")
 
-    # Throwing this in a try statement lets us skip reviews that break our code
-    # The key example of these would be reviews in foreign languages
-    try:
-        for item in reviews:
-            print("Reviewing an item")
+    for item in reviews:
+        # Throwing this in a try statement lets us skip reviews that break our code
+        # The key example of these would be reviews in foreign languages
+        try:
             # Take the product's title from the overall object
             product = soup.title.text.replace(
                 'Amazon.co.uk:Customer reviews:', '').strip()
@@ -82,19 +92,18 @@ def get_reviews(soup, page):
 
             review_list.append(review)
 
-    # If we can't run our extraction code, just go to the next review
-    except:
-        print("Skipping a review due to try/except failure")
-        pass
+        # If we can't run our extraction code, just go to the next review
+        except:
+            print("Skipping a review due to try/except failure")
+            reviews_skipped.append(item)
+            pass
 
 
-def scrape_pages(input_url, output_url, max_pages):
+def scrape_pages(input_url, max_pages):
     # This runs through the x pages of reviews
     for x in range(1, max_pages):
         # Set the input url to the correct page number
         current_url = f'{input_url}{x}'
-
-        print(f"The currently url is {input_url}")
 
         soup = get_soup(current_url)
 
@@ -107,15 +116,29 @@ def scrape_pages(input_url, output_url, max_pages):
         # This tag is found when the "next page" option is unavailable
         # When that's the case we want to end our search
         if soup.find('li', {'class': 'a-disabled a-last'}):
+            print('Final page found')
             break
 
-    # Convert our list to a df and save it to an excel file
-    df = pd.DataFrame(review_list)
-    df.to_excel(output_url, index=False)
 
+review_list = []
+output_url = 'product_reviews.xlsx'
+reviews_skipped = []
 
 # TODO: Get urls from a url spreadsheet, and run through each of them
-review_list = []
+products_df = pd.read_excel('product_urls.xlsx', header=0,
+                            index_col=0)
 
-scrape_pages('https://www.amazon.co.uk/LEGO-42123-Technic-Collectible-Construction/product-reviews/B08G4293BD/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews&pageNumber=',
-             'product_reviews.xlsx', 10)
+product_urls = products_df['url'].values.tolist()
+
+for product_url in product_urls:
+    review_url = build_review_url(product_url)
+
+    print(f'Scraping url {review_url}')
+
+    scrape_pages(review_url, 10)
+
+# Convert our list to a df and save it to an excel file
+df = pd.DataFrame(review_list)
+df.to_excel(output_url, index=False)
+
+print(len(reviews_skipped))

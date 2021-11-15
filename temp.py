@@ -16,8 +16,8 @@ def build_review_url(url):  # Turn a regular review into a product review
 
 url = build_review_url(url)
 
-df = pd.read_excel('product_urls.xlsx', header=0,
-                   index_col=0)
+products_df = pd.read_excel('product_urls.xlsx', header=0,
+                            index_col=0)
 
-product_urls = df['url'].values.tolist()
+product_urls = products_df['url'].values.tolist()
 print(product_urls[0])
