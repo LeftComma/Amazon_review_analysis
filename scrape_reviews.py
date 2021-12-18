@@ -23,7 +23,7 @@ def build_review_url(url):  # Turn a regular review into a product review
 
 
 def get_soup(url):  # Get a soup object from a url
-    time.sleep(1)
+    time.sleep(2)
 
     # Having a header helps convince Amazon that we're not a bot
     headers = ({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0',
@@ -141,4 +141,4 @@ for product_url in product_urls:
 df = pd.DataFrame(review_list)
 df.to_excel(output_url, index=False)
 
-print(len(reviews_skipped))
+print(f'The number of skipped reviews was {len(reviews_skipped)}')
