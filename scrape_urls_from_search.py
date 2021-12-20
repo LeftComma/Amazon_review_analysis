@@ -27,11 +27,42 @@ def build_amz_search_url(brand_string, page_no):
     return url
 
 
+def request_url(url, no_tries=3):
+    if no_tries == 0:
+        print('URL request has failed 3 times. Moving to next URL')
+        return 0
+
+    try:
+        time.sleep(2)
+        # Having a header helps convince Amazon that we're not a bot
+        headers = ({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0',
+                    'Accept-Language': 'en-US, en;q=0.5'})
+
+        # Make the request, timeout means it throw an error if it takes longer than 1 sec
+        r = requests.get(url=url, headers=headers, timeout=1)
+
+        r.raise_for_status()
+
+        # Create a soup object, lxml is a fast and lenient HTML parser
+        soup = BeautifulSoup(r.text, "lxml")
+
+    # This handles all types of error in the requests package
+    except requests.exceptions.RequestException as err:
+        print('An error has occured when trying to reach the url')
+        print(err)
+        no_tries -= 1
+        request_url(url, no_tries)
+
+
 def extract_product(item, page):  # Extract the details from a single product
     # Description and url
     atag = item.h2.a
     description = atag.text.strip()
     url = 'https://www.amazon.co.uk' + atag.get('href')
+
+    # Sometimes the url is a redirect one. This follows the redirection and saves the destination url
+    redirect = requests.get(url)
+    url = redirect.url
 
     # Price
     # An item has no price if it's currently unavailable
@@ -63,25 +94,14 @@ def scrape_searches(brand_string, max_pages, max_results):  # Run the main body 
     # Create an empty list for the products
     products = []
 
-    # Define the custom headers that stop Amazon thinking we're a bot
-    headers = ({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0',
-                'Accept-Language': 'en-US, en;q=0.5'})
-
     for page in range(1, max_pages):
         print(f'Scraping page {page}')
 
-        # This generates a url using our function
         url = build_amz_search_url(brand_string, page)
         # Test url for product_urls_changed.xlsx is 'https://www.amazon.co.uk/s?k=lego&qid=1633700647&ref=sr_pg_1'
 
-        # This calls the actual page (currently using a custom url)
-        time.sleep(2)
-        # TODO: Maybe move the requests stuff to it's own function so I can do error handling
-        r = requests.get(
-            url=url, headers=headers, timeout=2)
-
         # Create a soup object from the webpage
-        soup = BeautifulSoup(r.text, 'lxml')
+        soup = request_url(url)
 
         # Find all the product objects in the soup object
         results = soup.find_all(

@@ -22,20 +22,33 @@ def build_review_url(url):  # Turn a regular review into a product review
     return review_url
 
 
-def get_soup(url):  # Get a soup object from a url
-    time.sleep(2)
+def request_url(url, no_tries=3):
+    if no_tries == 0:
+        print('URL request has failed 3 times. Moving to next URL')
+        return 0
 
-    # Having a header helps convince Amazon that we're not a bot
-    headers = ({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0',
-                'Accept-Language': 'en-US, en;q=0.5'})
+    try:
+        time.sleep(2)
+        # Having a header helps convince Amazon that we're not a bot
+        headers = ({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0',
+                    'Accept-Language': 'en-US, en;q=0.5'})
 
-    # Make the request, timeout means it throw an error if it takes longer than 1 sec
-    r = requests.get(url=url, headers=headers, timeout=1)
+        # Make the request, timeout means it throw an error if it takes longer than 1 sec
+        r = requests.get(url=url, headers=headers, timeout=1)
 
-    # Create a soup object, lxml is a fast and lenient HTML parser
-    soup = BeautifulSoup(r.text, "lxml")
+        r.raise_for_status()
 
-    return soup
+        # Create a soup object, lxml is a fast and lenient HTML parser
+        soup = BeautifulSoup(r.text, "lxml")
+
+        return soup
+
+    # This handles all types of error in the requests package
+    except requests.exceptions.RequestException as err:
+        print('An error has occured when trying to reach the url')
+        print(err)
+        no_tries -= 1
+        request_url(url, no_tries)
 
 
 def get_reviews(soup, page):
@@ -105,7 +118,13 @@ def scrape_pages(input_url, max_pages):
         # Set the input url to the correct page number
         current_url = f'{input_url}{x}'
 
-        soup = get_soup(current_url)
+        soup = request_url(current_url)
+
+        if soup == 0:
+            continue
+
+        # TODO: Only use this if something is wrong
+        # print(soup.body)
 
         get_reviews(soup, x)
 
@@ -124,7 +143,7 @@ review_list = []
 output_url = 'product_reviews.xlsx'
 reviews_skipped = []
 
-# TODO: Get urls from a url spreadsheet, and run through each of them
+# Get urls from a url spreadsheet, and run through each of them
 products_df = pd.read_excel('product_urls.xlsx', header=0,
                             index_col=0)
 
@@ -140,5 +159,6 @@ for product_url in product_urls:
 # Convert our list to a df and save it to an excel file
 df = pd.DataFrame(review_list)
 df.to_excel(output_url, index=False)
+print("Data saved")
 
 print(f'The number of skipped reviews was {len(reviews_skipped)}')

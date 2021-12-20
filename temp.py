@@ -1,23 +1,33 @@
-import re
-import pandas as pd
-
-url = 'https://www.amazon.co.uk/LEGO-42123-Technic-Collectible-Construction/dp/B08G4293BD/ref=sr_1_1?crid=1SDTYPYXM70YV&keywords=lego&qid=1636379951&refinements=p_89%3Alego&rnid=1632651031&s=kids&sprefix=my+li%2Ctoys%2C163&sr=1-1'
-
-
-def build_review_url(url):  # Turn a regular review into a product review
-    # Replace default page with product reviews
-    review_url = url.replace('dp', 'product-reviews')
-
-    # Strip everything off the review before a particular expression, and then add on a different ending
-    review_url = re.split('/ref=', review_url)[0] + \
-        '/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews&pageNumber='
-    return review_url
+import requests
+from bs4 import BeautifulSoup
+import time
 
 
-url = build_review_url(url)
+def request_url(url, no_tries=3):
+    if no_tries == 0:
+        print('URL request has failed 3 times. Moving to next URL')
+        return 0
 
-products_df = pd.read_excel('product_urls.xlsx', header=0,
-                            index_col=0)
+    try:
+        time.sleep(2)
+        # Having a header helps convince Amazon that we're not a bot
+        headers = ({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0',
+                    'Accept-Language': 'en-US, en;q=0.5'})
 
-product_urls = products_df['url'].values.tolist()
-print(product_urls[0])
+        # Make the request, timeout means it throw an error if it takes longer than 1 sec
+        r = requests.get(url=url, headers=headers, timeout=1)
+
+        r.raise_for_status()
+
+        # Create a soup object, lxml is a fast and lenient HTML parser
+        soup = BeautifulSoup(r.text, "lxml")
+
+    # This handles all types of error in the requests package
+    except requests.exceptions.RequestException as err:
+        print('An error has occured when trying to reach the url')
+        print(err)
+        no_tries -= 1
+        request_url(url, no_tries)
+
+
+request_url('http://www.google.com/nothere')
